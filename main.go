@@ -13,6 +13,7 @@ import (
 
 const pwmDataStart = "pwm1"
 const homePath = "/sys/class/hwmon/"
+const isSerialRunning = false
 
 func readPwmValue(pwmFile string) (int, error) {
 	data, err := ioutil.ReadFile(pwmFile)
@@ -29,9 +30,22 @@ func readPwmValue(pwmFile string) (int, error) {
 }
 
 func main() {
+	// 1. 启动串口监听 (路径通常是 /dev/ttyACM0 或 /dev/ttyUSB0)
 	for {
-		scanHwmonDirectories()
+		picoPort := FindPicoPort()
+		if picoPort == "" {
+			log.Println("等待 Pico 接入...")
+			time.Sleep(2 * time.Second)
+			continue
+		}
 
+		// 如果串口没在运行，则启动它
+		// 这里需要你定义一个状态变量，比如 isSerialRunning
+		if !isSerialRunning {
+			go ReadPicoSerial(picoPort)
+		}
+
+		scanHwmonDirectories()
 		time.Sleep(1 * time.Second)
 	}
 }
