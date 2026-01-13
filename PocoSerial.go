@@ -49,6 +49,7 @@ func ReadPicoSerial(s *serial.Port) {
 			fmt.Printf("收到数据 -> 转速: %d RPM, 占空比: %d%%\n", data.RPM, data.Duty)
 			currentPicoRPM := data.RPM
 			fmt.Printf("当前 Pico 转速: %d RPM\n", currentPicoRPM)
+
 		} else {
 			// 打印非 JSON 的调试信息（比如 Pico 启动时的报错）
 			log.Printf("Pico Log: %s", line)
