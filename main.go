@@ -9,6 +9,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -62,6 +63,9 @@ func initializeHardware() (*serial.Port, string, error) {
 	}
 
 	// 找到 C 驱动路径
+	if runtime.GOOS == "windows" {
+		return s, "", nil
+	}
 	path, err := findHwmonPath() // 使用你之前的 findHwmonPath
 	if err != nil {
 		s.Close()
@@ -114,7 +118,7 @@ func startBridge(ctx context.Context, s *serial.Port, hwmonPath string) {
 				log.Printf("读取串口失败: %v", err)
 				return // 触发重连
 			}
-
+			log.Printf("Pico 输出: %s", line)
 			line = strings.TrimSpace(line)
 			if strings.HasPrefix(line, "{") {
 				var data PicoData

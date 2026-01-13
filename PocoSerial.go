@@ -8,7 +8,8 @@ import (
 	"log"
 	"strings"
 
-	"github.com/tarm/serial" // 需要安装此库
+	"github.com/tarm/serial"      // 需要安装此库
+	"go.bug.st/serial/enumerator" // 扫描端口功能
 )
 
 var currentPicoRPM int // 全局变量存储 Pico 传回的转速
@@ -58,7 +59,7 @@ func ReadPicoSerial(s *serial.Port) {
 	}
 }
 func OpenPico() (*serial.Port, error) {
-	portName := FindPicoPort()
+	portName := FindPicoPortV2()
 	if portName == "" {
 		return nil, fmt.Errorf("未发现 Pico 设备")
 	}
@@ -93,5 +94,19 @@ func FindPicoPort() string {
 	}
 
 	// 方法 B: 如果 by-id 不存在，尝试默认值
+	return ""
+}
+
+func FindPicoPortV2() string {
+	ports, _ := enumerator.GetDetailedPortsList()
+	for _, port := range ports {
+		if port.IsUSB {
+			// 通过 Pico 固定的 USB 厂商 ID (VID) 和 产品 ID (PID) 来锁定
+			// Raspberry Pi Pico 的 VID 通常是 2e8a
+			if strings.EqualFold(port.VID, "2E8A") {
+				return port.Name
+			}
+		}
+	}
 	return ""
 }
