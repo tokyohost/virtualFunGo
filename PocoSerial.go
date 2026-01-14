@@ -12,11 +12,19 @@ import (
 	"go.bug.st/serial/enumerator" // 扫描端口功能
 )
 
-var currentPicoRPM int // 全局变量存储 Pico 传回的转速
 // 定义与 Pico 输出匹配的结构体
 type PicoData struct {
 	RPM  int `json:"rpm"`
 	Duty int `json:"duty"`
+}
+type FanStatus struct {
+	ID   string `json:"id"`
+	RPM  int    `json:"rpm"`
+	Duty int    `json:"duty"`
+}
+
+type PicoReport struct {
+	Fans []FanStatus `json:"fans"`
 }
 
 var currentPicoData PicoData
@@ -98,12 +106,16 @@ func FindPicoPort() string {
 }
 
 func FindPicoPortV2() string {
-	ports, _ := enumerator.GetDetailedPortsList()
+	ports, err := enumerator.GetDetailedPortsList()
+	if err != nil {
+		return ""
+	}
 	for _, port := range ports {
 		if port.IsUSB {
-			// 通过 Pico 固定的 USB 厂商 ID (VID) 和 产品 ID (PID) 来锁定
-			// Raspberry Pi Pico 的 VID 通常是 2e8a
+			// Raspberry Pi Pico 的 VID 是 2E8A
+			// 某些 MicroPython 固件可能显示为大写或小写，所以用 EqualFold
 			if strings.EqualFold(port.VID, "2E8A") {
+				log.Printf("检测到 Pico 设备: %s (PID: %s)", port.Name, port.PID)
 				return port.Name
 			}
 		}

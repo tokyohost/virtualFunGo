@@ -81,32 +81,38 @@ func fileExists(filename string) bool {
 	return !os.IsNotExist(err)
 }
 func startBridge(ctx context.Context, s *serial.Port, hwmonPath string) {
-	pwmFile := filepath.Join(hwmonPath, "pwm1")
-	rpmFile := filepath.Join(hwmonPath, "fan1_input")
-
-	// 协程 1: 监听驱动 PWM -> 发给 Pico
+	// 协程 1: 监听驱动 PWM (1, 2, 3) -> 发给 Pico
 	go func() {
-		lastPwm := -1
+		// 使用 map 记录每个风扇的上一次 PWM 值
+		lastPwms := make(map[string]int)
+		// 这里的 ID 对应你 Pico 字典里的 Key
+		fanIds := []string{"fan1", "fan2", "fan3"}
+
 		for {
 			select {
-			case <-ctx.Done(): // 收到退出信号
+			case <-ctx.Done():
 				return
 			default:
-				val := readIntFromFile(pwmFile)
-				if val != lastPwm {
-					if err := SetFanSpeed(s, val); err != nil {
-						log.Printf("写入串口失败，可能已拔出: %v", err)
-						return // 报错退出，触发重连逻辑
+				for i, id := range fanIds {
+					// 驱动里的文件名通常从 1 开始: pwm1, pwm2...
+					fileName := fmt.Sprintf("pwm%d", i+1)
+					pwmFile := filepath.Join(hwmonPath, fileName)
+
+					val := readIntFromFile(pwmFile)
+					if val != lastPwms[id] {
+						if err := SetFanSpeed(s, id, val); err != nil {
+							log.Printf("写入串口失败: %v", err)
+							return
+						}
+						lastPwms[id] = val
 					}
-					lastPwm = val
 				}
 				time.Sleep(200 * time.Millisecond)
 			}
 		}
 	}()
 
-	// 协程 2: 监听 Pico 串口 -> 写回驱动
-	// 这里不加 go，让它在当前协程运行，阻塞 startBridge
+	// 协程 2: 监听 Pico 串口 -> 分发回驱动对应的 fanX_input
 	reader := bufio.NewReader(s)
 	for {
 		select {
@@ -116,15 +122,23 @@ func startBridge(ctx context.Context, s *serial.Port, hwmonPath string) {
 			line, err := reader.ReadString('\n')
 			if err != nil {
 				log.Printf("读取串口失败: %v", err)
-				return // 触发重连
+				return
 			}
-			log.Printf("Pico 输出: %s", line)
+
 			line = strings.TrimSpace(line)
 			if strings.HasPrefix(line, "{") {
-				var data PicoData
-				if err := json.Unmarshal([]byte(line), &data); err == nil {
-					// 写入 RPM 驱动文件
-					os.WriteFile(rpmFile, []byte(strconv.Itoa(data.RPM)), 0644)
+				var report PicoReport
+				if err := json.Unmarshal([]byte(line), &report); err == nil {
+					for _, fan := range report.Fans {
+						// 建立 ID 和 驱动文件的映射关系
+						// 假设 fan1 -> fan1_input, fan2 -> fan2_input
+						// 我们把 "fan1" 里的数字提取出来
+						numStr := strings.TrimPrefix(fan.ID, "fan")
+						rpmFile := filepath.Join(hwmonPath, fmt.Sprintf("fan%s_input", numStr))
+
+						// 写入对应的驱动文件
+						os.WriteFile(rpmFile, []byte(strconv.Itoa(fan.RPM)), 0644)
+					}
 				}
 			}
 		}
@@ -162,16 +176,16 @@ func findHwmonPath() (string, error) {
 }
 
 // 示例：向 Pico 发送设置转速的 JSON 指令
-func SetFanSpeed(s *serial.Port, pwmValue int) error {
-	// 将 0-255 的 hwmon 值转换为 0-100 的百分比
+func SetFanSpeed(s *serial.Port, fanID string, pwmValue int) error {
 	percent := int((float64(pwmValue) / 255.0) * 100)
-	cmd := fmt.Sprintf("{\"set_duty\": %d}\n", percent)
-	_, err := s.Write([]byte(cmd))
-	if err != nil {
-		log.Printf("发送指令失败: %v", err)
-		return err
+	// 构造带 ID 的指令: {"fan": "fan1", "set_duty": 50}
+	cmdObj := map[string]interface{}{
+		"fan":      fanID,
+		"set_duty": percent,
 	}
-	return nil
+	cmdBuf, _ := json.Marshal(cmdObj)
+	_, err := s.Write(append(cmdBuf, '\n'))
+	return err
 }
 
 func readIntFromFile(filePath string) int {
