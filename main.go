@@ -178,8 +178,8 @@ func readIntFromFile(filePath string) int {
 	// 1. 读取文件全部内容
 	data, err := os.ReadFile(filePath)
 	if err != nil {
-		// 如果读取失败（比如驱动还没加载），返回 0 或 -1
-		return 0
+		// 如果读取失败（比如驱动还没加载），返回 0 或 -1 返回255，风扇最大
+		return 255
 	}
 
 	// 2. 去除字符串两端的空白字符（如 \n \t 或空格）
@@ -188,7 +188,7 @@ func readIntFromFile(filePath string) int {
 	// 3. 将字符串转换为整数
 	val, err := strconv.Atoi(content)
 	if err != nil {
-		return 0
+		return 255
 	}
 
 	return val
