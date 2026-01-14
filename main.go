@@ -126,6 +126,7 @@ func startBridge(ctx context.Context, s *serial.Port, hwmonPath string) {
 			}
 
 			line = strings.TrimSpace(line)
+			fmt.Println("Pico 反馈: ", line)
 			if strings.HasPrefix(line, "{") {
 				var report PicoReport
 				if err := json.Unmarshal([]byte(line), &report); err == nil {
