@@ -99,6 +99,7 @@ func startBridge(ctx context.Context, s *serial.Port, hwmonPath string) {
 					pwmFile := filepath.Join(hwmonPath, fileName)
 
 					val := readIntFromFile(pwmFile)
+					fmt.Println("读取驱动文件: ", pwmFile, " 得到 PWM: ", val)
 					if val != lastPwms[id] {
 						if err := SetFanSpeed(s, id, val); err != nil {
 							log.Printf("写入串口失败: %v", err)
@@ -127,15 +128,16 @@ func startBridge(ctx context.Context, s *serial.Port, hwmonPath string) {
 
 			line = strings.TrimSpace(line)
 			fmt.Println("Pico 反馈: ", line)
-			if strings.HasPrefix(line, "{") {
-				var report PicoReport
-				if err := json.Unmarshal([]byte(line), &report); err == nil {
-					for _, fan := range report.Fans {
+			if strings.HasPrefix(line, "[") {
+				var fans []FanStatus
+				if err := json.Unmarshal([]byte(line), &fans); err == nil {
+					for _, fan := range fans {
 						// 建立 ID 和 驱动文件的映射关系
 						// 假设 fan1 -> fan1_input, fan2 -> fan2_input
 						// 我们把 "fan1" 里的数字提取出来
 						numStr := strings.TrimPrefix(fan.ID, "fan")
 						rpmFile := filepath.Join(hwmonPath, fmt.Sprintf("fan%s_input", numStr))
+						fmt.Println("更新驱动文件: ", rpmFile, " 为 RPM: ", fan.RPM)
 
 						// 写入对应的驱动文件
 						os.WriteFile(rpmFile, []byte(strconv.Itoa(fan.RPM)), 0644)
@@ -184,6 +186,7 @@ func SetFanSpeed(s *serial.Port, fanID string, pwmValue int) error {
 		"fan":      fanID,
 		"set_duty": percent,
 	}
+	fmt.Printf("send to Pico: %+v\n", cmdObj)
 	cmdBuf, _ := json.Marshal(cmdObj)
 	_, err := s.Write(append(cmdBuf, '\n'))
 	return err

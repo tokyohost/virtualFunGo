@@ -1,10 +1,7 @@
 package main
 
 import (
-	"bufio"
-	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"strings"
 
@@ -23,49 +20,6 @@ type FanStatus struct {
 	Duty int    `json:"duty"`
 }
 
-type PicoReport struct {
-	Fans []FanStatus `json:"fans"`
-}
-
-var currentPicoData PicoData
-
-// 协程：监听 Pico 串口
-func ReadPicoSerial(s *serial.Port) {
-
-	reader := bufio.NewReader(s)
-	for {
-		line, err := reader.ReadString('\n')
-		if err != nil {
-			log.Printf("读取串口错误: %v", err)
-			break
-		}
-		//  Pico 发送格式为 “{"rpm": 0, "duty": 60}”
-		//line = strings.TrimSpace(line)
-		//if strings.HasPrefix(line, "RPM:") {
-		//	fmt.Sscanf(line, "RPM:%d", &currentPicoRPM)
-		//}
-		// 检查是否为 JSON 格式 (简单校验以防 Pico 启动时的杂讯)
-		if strings.HasPrefix(line, "{") && strings.HasSuffix(line, "}") {
-			var data PicoData
-			err := json.Unmarshal([]byte(line), &data)
-			if err != nil {
-				log.Printf("JSON 解析失败: %v | 内容: %s", err, line)
-				continue
-			}
-
-			// 更新全局变量或进行逻辑处理
-			currentPicoData = data
-			fmt.Printf("收到数据 -> 转速: %d RPM, 占空比: %d%%\n", data.RPM, data.Duty)
-			currentPicoRPM := data.RPM
-			fmt.Printf("当前 Pico 转速: %d RPM\n", currentPicoRPM)
-
-		} else {
-			// 打印非 JSON 的调试信息（比如 Pico 启动时的报错）
-			log.Printf("Pico Log: %s", line)
-		}
-
-	}
-}
 func OpenPico() (*serial.Port, error) {
 	portName := FindPicoPortV2()
 	if portName == "" {
@@ -86,23 +40,6 @@ func OpenPico() (*serial.Port, error) {
 	}
 
 	return s, nil
-}
-
-func FindPicoPort() string {
-	// 方法 A: 扫描 by-id 目录
-	idPath := "/dev/serial/by-id/"
-	files, err := ioutil.ReadDir(idPath)
-	if err == nil {
-		for _, f := range files {
-			if strings.Contains(f.Name(), "Pico") || strings.Contains(f.Name(), "Raspberry_Pi") {
-				print("找到串口" + f.Name())
-				return idPath + f.Name()
-			}
-		}
-	}
-
-	// 方法 B: 如果 by-id 不存在，尝试默认值
-	return ""
 }
 
 func FindPicoPortV2() string {
