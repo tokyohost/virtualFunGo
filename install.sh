@@ -52,7 +52,7 @@ git config --global http.postBuffer 524288000
 # ---------- install Go ----------
 install_go_binary() {
   GO_TAR="go1.24.11.linux-amd64.tar.gz"
-  DOWNLOAD_URL="https://go.dev/dl/${GO_TAR}"
+  DOWNLOAD_URL="https://mirrors.tuna.tsinghua.edu.cn/go/${GO_TAR}"
 
   echo "[INFO] Downloading Go binary ${DOWNLOAD_URL}"
   curl -L --http1.1 -k "$DOWNLOAD_URL"
