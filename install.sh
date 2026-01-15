@@ -2,11 +2,12 @@
 set -e
 
 APP_NAME="virtual-fun-go"
+BUILD_NAME="pico-fan-bridge"
 REPO_URL="https://github.com/tokyohost/virtualFunGo.git"
 BRANCH="master"
 WORKDIR="/opt/${APP_NAME}"
-INSTALL_BIN="/usr/local/bin/${APP_NAME}"
-SERVICE_FILE="${APP_NAME}.service"
+INSTALL_BIN="/usr/local/bin/${BUILD_NAME}"
+SERVICE_FILE="${BUILD_NAME}.service"
 MIN_GO_VERSION="1.24"
 
 echo "======================================"
@@ -63,24 +64,27 @@ install_go_binary() {
   export PATH="/usr/local/go/bin:$PATH"
 }
 
+# ---------- check Go ----------
 check_go_version() {
   if ! command -v go >/dev/null 2>&1; then
-    return 1
+    return 1   # 没有 go
   fi
+
   CURRENT=$(go version | awk '{print $3}' | sed 's/go//')
   # compare version
-  if [[ $(printf '%s\n' "$MIN_GO_VERSION" "$CURRENT" | sort -V | head -n1) != "$MIN_GO_VERSION" ]]; then
-    return 0
+  # 如果当前版本 >= MIN_GO_VERSION，则返回 0
+  if [[ $(printf '%s\n' "$CURRENT" "$MIN_GO_VERSION" | sort -V | head -n1) == "$MIN_GO_VERSION" ]]; then
+    return 0   # 版本够用
   else
-    return 1
+    return 1   # 版本太低
   fi
 }
 
-if ! check_go_version; then
+if check_go_version; then
+  echo "[INFO] Go already installed and version is sufficient: $(go version)"
+else
   echo "[INFO] Installing Go >= ${MIN_GO_VERSION}..."
   install_go_binary
-else
-  echo "[INFO] Found Go $(go version)"
 fi
 
 # ---------- clone repository ----------
@@ -93,11 +97,12 @@ GIT_HTTP_VERSION=HTTP/1.1 git clone --depth=1 -b "$BRANCH" "$REPO_URL" "$WORKDIR
 # ---------- build ----------
 echo "[INFO] Building ${APP_NAME}..."
 cd "$WORKDIR"
-go build -o "$APP_NAME"
+go mod tidy
+go build -o "$BUILD_NAME" .
 
 # ---------- install binary ----------
 echo "[INFO] Installing binary to ${INSTALL_BIN}"
-install -m 0755 "$APP_NAME" "$INSTALL_BIN"
+install -m 0755 "$BUILD_NAME" "$INSTALL_BIN"
 
 # ---------- install systemd service ----------
 if [ ! -f "$WORKDIR/${SERVICE_FILE}" ]; then
@@ -110,16 +115,16 @@ install -m 0644 "$WORKDIR/${SERVICE_FILE}" "/etc/systemd/system/${SERVICE_FILE}"
 
 systemctl daemon-reexec
 systemctl daemon-reload
-systemctl enable "${APP_NAME}.service"
+systemctl enable "${BUILD_NAME}.service"
 
 # ---------- start service ----------
 echo "[INFO] Starting service"
-systemctl restart "${APP_NAME}.service"
+systemctl restart "${BUILD_NAME}.service"
 
 echo
 echo "=========== SERVICE STATUS ==========="
-systemctl status "${APP_NAME}.service" --no-pager || true
+systemctl status "${BUILD_NAME}.service" --no-pager || true
 echo "===================================="
 
 echo
-echo "[SUCCESS] ${APP_NAME} installed successfully"
+echo "[SUCCESS] ${BUILD_NAME} installed successfully"
