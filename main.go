@@ -100,12 +100,14 @@ func startBridge(ctx context.Context, s *serial.Port, hwmonPath string) {
 
 					val := readIntFromFile(pwmFile)
 					fmt.Println("读取驱动文件: ", pwmFile, " 得到 PWM: ", val)
-					if val != lastPwms[id] {
+					oldVal, ok := lastPwms[id]
+					if !ok || val != oldVal {
+						// 还没有记录，或者值变化了，都要下发
 						if err := SetFanSpeed(s, id, val); err != nil {
 							log.Printf("写入串口失败: %v", err)
 							return
 						}
-						lastPwms[id] = val
+						lastPwms[id] = oldVal
 					}
 				}
 				time.Sleep(200 * time.Millisecond)
