@@ -55,7 +55,7 @@ install_go_binary() {
   DOWNLOAD_URL="https://mirrors.aliyun.com/golang/${GO_TAR}"
 
   echo "[INFO] Downloading Go binary ${DOWNLOAD_URL}"
-  curl -L --http1.1 -k "$DOWNLOAD_URL"
+  curl -LO "$DOWNLOAD_URL"
   rm -rf /usr/local/go
   tar -C /usr/local -xzf "$GO_TAR"
   rm "$GO_TAR"
