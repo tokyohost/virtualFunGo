@@ -51,7 +51,7 @@ git config --global http.postBuffer 524288000
 
 # ---------- install Go ----------
 install_go_binary() {
-  GO_TAR="go1.26.8.linux-amd64.tar.gz"
+  GO_TAR="go1.24.0.linux-amd64.tar.gz"
   DOWNLOAD_URL="https://go.dev/dl/${GO_TAR}"
 
   echo "[INFO] Downloading Go binary ${DOWNLOAD_URL}"
