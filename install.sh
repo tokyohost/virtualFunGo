@@ -8,7 +8,7 @@ BRANCH="master"
 WORKDIR="/opt/${APP_NAME}"
 INSTALL_BIN="/usr/local/bin/${BUILD_NAME}"
 SERVICE_FILE="${BUILD_NAME}.service"
-MIN_GO_VERSION="1.24"
+MIN_GO_VERSION="1.24.11"
 
 echo "======================================"
 echo " Installing ${APP_NAME} (Go >= ${MIN_GO_VERSION})"
