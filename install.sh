@@ -55,7 +55,7 @@ install_go_binary() {
   DOWNLOAD_URL="https://go.dev/dl/${GO_TAR}"
 
   echo "[INFO] Downloading Go binary ${DOWNLOAD_URL}"
-  curl -LO "$DOWNLOAD_URL"
+  curl curl -L --http1.1 -k "$DOWNLOAD_URL"
   rm -rf /usr/local/go
   tar -C /usr/local -xzf "$GO_TAR"
   rm "$GO_TAR"
