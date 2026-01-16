@@ -114,7 +114,8 @@ MIT License
 
 - **virtual_fun_kernel**  
   https://github.com/tokyohost/virtual_fun_kernel
-
+- **Pi Pico Fan microPython code**
+  https://github.com/tokyohost/virtual_funPico
 ---
 
 ## 🙌 Contributing
